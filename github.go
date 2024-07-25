@@ -21,6 +21,19 @@ type Stats struct {
 	Count int    `json:"count"`
 }
 
+type StatsCollection []Stats
+
+func (sc StatsCollection) Max() int {
+	max := 0
+	for _, s := range sc {
+		if s.Count > max {
+			max = s.Count
+		}
+	}
+
+	return max
+}
+
 type Contributions struct {
 	TotalContributions int            `json:"total_contributions"`
 	FirstDate          string         `json:"first_date"`
@@ -28,7 +41,7 @@ type Contributions struct {
 	ByDate             map[string]int `json:"by_date"`
 }
 
-func (c *Contributions) PerDay() []Stats {
+func (c *Contributions) PerDay() StatsCollection {
 	dayKeys := make([]string, 0, len(c.ByDate))
 	for key := range c.ByDate {
 		dayKeys = append(dayKeys, key)
@@ -37,7 +50,7 @@ func (c *Contributions) PerDay() []Stats {
 	// Sort the days
 	sort.Strings(dayKeys)
 
-	days := make([]Stats, 0, len(c.ByDate))
+	days := make(StatsCollection, 0, len(c.ByDate))
 	for _, date := range dayKeys {
 		days = append(days, Stats{
 			Date:  date,
@@ -48,7 +61,7 @@ func (c *Contributions) PerDay() []Stats {
 	return days
 }
 
-func (c *Contributions) PerWeek() []Stats {
+func (c *Contributions) PerWeek() StatsCollection {
 	weeks := make(map[string]int)
 
 	for date, count := range c.ByDate {
@@ -71,7 +84,7 @@ func (c *Contributions) PerWeek() []Stats {
 	// Sort the weeks
 	sort.Strings(weekKeys)
 
-	weekStats := make([]Stats, 0, len(weeks))
+	weekStats := make(StatsCollection, 0, len(weeks))
 	for _, week := range weekKeys {
 		weekStats = append(weekStats, Stats{
 			Date:  week,

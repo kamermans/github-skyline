@@ -1,24 +1,24 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"math"
-	"os"
 	// _ "github.com/go-gl/mathgl/mgl64"
 	// _ "github.com/ljanyst/ghostscad/primitive"
 	// osc "github.com/ljanyst/ghostscad/sys"
 )
 
 const (
-	defaultBaseMargin = 5.0
+	defaultBaseMargin = 1.0
 	defaultBaseHeight = 5.0
+	defaultBaseAngle  = 22.5
 )
 
 type SkylineGenerator struct {
 	contributions  Contributions
 	aspectRatio    float64
 	maxHeight      float64
-	stepSize       float64
 	buildingWidth  float64
 	buildingLength float64
 }
@@ -42,25 +42,29 @@ type BoundingBox struct {
 }
 
 type Skyline struct {
-	Buildings  [][]*Building
-	Bounds     BoundingBox
-	BaseMargin float64
-	BaseHeight float64
+	BuildingMatrix    [][]*Building
+	Buildings         []Building
+	BuildingWidth     float64
+	BuildingLength    float64
+	MaxBuildingHeight float64
+	MaxContributions  int
+	Bounds            BoundingBox
+	BaseMargin        float64
+	BaseHeight        float64
+	BaseAngle         float64
 }
 
 // NewSkylineGenerator creates a new SkylineGenerator
 // Contributions: the contributions to use
 // aspectRatio: the aspect ratio of the skyline, like [2]int[16, 9] for a 16:9 aspect ratio
 // maxHeight: the maximum height of the buildings in mm
-// stepSize: the step size of the skyline in mm
 // buildingWidth: the width of the buildings in mm
 // buildingLength: the length of the buildings in mm
-func NewSkylineGenerator(Contributions Contributions, aspectRatio [2]int, maxHeight, stepSize, buildingWidth, buildingLength float64) *SkylineGenerator {
+func NewSkylineGenerator(Contributions Contributions, aspectRatio [2]int, maxHeight, buildingWidth, buildingLength float64) *SkylineGenerator {
 	sg := &SkylineGenerator{
 		contributions:  Contributions,
 		aspectRatio:    float64(aspectRatio[0]) / float64(aspectRatio[1]),
 		maxHeight:      maxHeight,
-		stepSize:       stepSize,
 		buildingWidth:  buildingWidth,
 		buildingLength: buildingLength,
 	}
@@ -68,10 +72,24 @@ func NewSkylineGenerator(Contributions Contributions, aspectRatio [2]int, maxHei
 	return sg
 }
 
-func (sg *SkylineGenerator) Generate() *Skyline {
-	matrix := sg.computeMatrix()
+func (sg *SkylineGenerator) Generate(interval string) *Skyline {
+	matrix, contribs := sg.computeMatrix(interval)
+	buildings := []Building{}
+	for _, col := range matrix {
+		for _, b := range col {
+			if b != nil {
+				buildings = append(buildings, *b)
+			}
+		}
+	}
+
 	skyline := &Skyline{
-		Buildings: matrix,
+		BuildingMatrix:    matrix,
+		Buildings:         buildings,
+		BuildingWidth:     sg.buildingWidth,
+		BuildingLength:    sg.buildingLength,
+		MaxBuildingHeight: sg.maxHeight,
+		MaxContributions:  contribs.Max(),
 		Bounds: BoundingBox{
 			MinX:   0,
 			MinY:   0,
@@ -83,28 +101,28 @@ func (sg *SkylineGenerator) Generate() *Skyline {
 		},
 		BaseMargin: defaultBaseMargin,
 		BaseHeight: defaultBaseHeight,
+		BaseAngle:  defaultBaseAngle,
 	}
-
-	// fmt.Printf("Matrix:\n")
-	// encoder := json.NewEncoder(os.Stdout)
-	// encoder.SetIndent("", "  ")
-	// encoder.Encode(matrix)
-	// fmt.Println()
 
 	return skyline
 }
 
-func (sg *SkylineGenerator) computeMatrix() [][]*Building {
+func (sg *SkylineGenerator) computeMatrix(interval string) ([][]*Building, StatsCollection) {
 	// Calculate the number of rows and columns based on the aspect ratio
 	// of the skyline and the number of contributions
-	contribs := sg.contributions.PerWeek()
+	var contribs StatsCollection
+
+	switch interval {
+	case "day":
+		contribs = sg.contributions.PerDay()
+	case "week":
+		contribs = sg.contributions.PerWeek()
+	default:
+		panic(fmt.Errorf("invalid interval: %s; must be day or week", interval))
+	}
+
 	numBuildings := float64(len(contribs))
 
-	// The aspectRatio is usually a number above 1
-	// We want to make sure that the skyline is wider than it is tall
-	// So we calculate the square root of the aspect ratio
-	// and use that as the number of columns
-	fmt.Printf("cols math: math.Ceil(math.Sqrt(float64(%v) * %v))\n", numBuildings, sg.aspectRatio)
 	cols := int(math.Ceil(math.Sqrt(numBuildings * sg.aspectRatio)))
 	rows := int(math.Ceil(numBuildings / float64(cols)))
 
@@ -133,9 +151,6 @@ func (sg *SkylineGenerator) computeMatrix() [][]*Building {
 			}
 
 			contrib := contribs[i]
-			i++
-			// fmt.Printf("Contrib: %v, %v, %v: %v\n", col, row, contrib.Date, contrib.Count)
-
 			building := &Building{
 				BoundingBox: &BoundingBox{
 					MinX:   float64(col) * sg.buildingWidth,
@@ -152,105 +167,100 @@ func (sg *SkylineGenerator) computeMatrix() [][]*Building {
 				Date:  contrib.Date,
 			}
 
-			// fmt.Printf("%v / %v * %v, ", float64(contrib.Count), float64(maxContributions), sg.maxHeight)
-			// fmt.Printf("%v,", contrib.Count)
-
 			matrix[col][row] = building
+			i++
 		}
 	}
 
-	return matrix
+	return matrix, contribs
 }
 
 var (
 	baseModule = `module base() {
-    color(baseColor, 1.0)
-        translate([baseWidth/2, baseLength/2, 0])
-            linear_extrude(height = baseHeight, scale = [baseChamferScaleX, baseChamferScaleY])
-                square([baseWidth, baseLength], center = true);
+    bottomWidth = baseWidth + 2 * baseOffset;
+    bottomLength = baseLength + 2 * baseOffset;
+
+    points = [
+        // Bottom
+        [0, 0, 0],
+        [bottomWidth, 0, 0],
+        [bottomWidth, bottomLength, 0],
+        [0, bottomLength, 0],
+        // Top
+        [baseOffset, baseOffset, baseHeight],
+        [baseWidth+baseOffset, baseOffset, baseHeight],
+        [baseWidth+baseOffset, baseLength+baseOffset, baseHeight],
+        [baseOffset, baseLength+baseOffset, baseHeight],
+    ];
+
+    faces = [
+        [0,1,2,3],  // Bottom
+        [4,5,1,0],  // Front
+        [7,6,5,4],  // Top
+        [5,6,2,1],  // Right
+        [6,7,3,2],  // Back
+        [7,4,0,3],  // Left
+    ];
+
+    color(baseColor)
+    polyhedron(points, faces);
 }`
 
 	buildingModule = `module building(x, y, contributions) {
     height = contributions / maxContributions * maxBuildingHeight;
     color(buildingColor)
-        translate([x+baseMargin, y+baseMargin, 5.000000])
-            cube([buildingWidth, buildingLength, height]);
-}
-`
+        translate([
+            x+baseMargin+baseOffset,
+            y+baseMargin+baseOffset, baseHeight
+        ])
+        cube([buildingWidth, buildingLength, height]);
+}`
 )
 
 func (sl *Skyline) ToOpenSCAD() ([]byte, error) {
-	// osc.Initialize()
-
-	// base := primitive.NewCube(mgl64.Vec3{sl.Bounds.Length, sl.Bounds.Width, sl.BaseHeight})
-
-	// osc.RenderOne(primitive.NewCube(mgl64.Vec3{sl.Bounds.Length, sl.Bounds.Width, sl.BaseHeight}))
-	file, err := os.Create("skyline.scad")
-	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return nil, err
-	}
-
-	defer file.Close()
-
-	maxContributions := 0
-	for _, col := range sl.Buildings {
-		for _, b := range col {
-			if b == nil {
-				continue
-			}
-
-			if b.Count > maxContributions {
-				maxContributions = b.Count
-			}
-		}
-	}
+	out := &bytes.Buffer{}
 
 	// Variables
-	fmt.Fprintf(file, "// GitHub Skyline Generator\n")
-	fmt.Fprintf(file, "// by Steve Kamerman\n")
-	fmt.Fprintf(file, "// https://github.com/kamermans/github-skyline\n\n")
+	fmt.Fprintf(out, "// GitHub Skyline Generator\n")
+	fmt.Fprintf(out, "// by Steve Kamerman\n")
+	fmt.Fprintf(out, "// https://github.com/kamermans/github-skyline\n\n")
 
-	fmt.Fprintf(file, "// Base Parameters\n")
-	fmt.Fprintf(file, "baseMargin = %f;\n", sl.BaseMargin)
-	fmt.Fprintf(file, "baseChamferScaleX = 0.9;\n")
-	fmt.Fprintf(file, "baseChamferScaleY = 0.8;\n")
-	fmt.Fprintf(file, "baseHeight = %f;\n", sl.BaseHeight)
-	fmt.Fprintf(file, "baseWidth = %f + (2 * baseMargin);\n", sl.Bounds.Width)
-	fmt.Fprintf(file, "baseLength = %f + (2 * baseMargin);\n", sl.Bounds.Length)
-	fmt.Fprintf(file, `baseColor = "cyan";`+"\n")
+	fmt.Fprintf(out, "// Base Parameters\n")
+	fmt.Fprintf(out, "baseMargin = %f;\n", sl.BaseMargin)
+	fmt.Fprintf(out, "baseAngle = %f;\n", sl.BaseAngle)
+	fmt.Fprintf(out, "baseHeight = %f;\n", sl.BaseHeight)
+	fmt.Fprintf(out, "baseWidth = %f + (2 * baseMargin);\n", sl.Bounds.Width)
+	fmt.Fprintf(out, "baseLength = %f + (2 * baseMargin);\n", sl.Bounds.Length)
+	fmt.Fprintf(out, "baseOffset = baseHeight * tan(baseAngle);\n")
+	fmt.Fprintf(out, `baseColor = "cyan";`+"\n")
 
-	fmt.Fprintf(file, "\n// Building Parameters\n")
-	fmt.Fprintf(file, "buildingWidth = %f;\n", sl.Buildings[0][0].Width)
-	fmt.Fprintf(file, "buildingLength = %f;\n", sl.Buildings[0][0].Length)
-	fmt.Fprintf(file, "maxBuildingHeight = %f;\n", sl.Bounds.Height)
-	fmt.Fprintf(file, `buildingColor = "red";`+"\n")
+	fmt.Fprintf(out, "\n// Building Parameters\n")
+	fmt.Fprintf(out, "buildingWidth = %f;\n", sl.BuildingWidth)
+	fmt.Fprintf(out, "buildingLength = %f;\n", sl.BuildingLength)
+	fmt.Fprintf(out, "maxBuildingHeight = %f;\n", sl.MaxBuildingHeight)
+	fmt.Fprintf(out, `buildingColor = "red";`+"\n")
 
-	fmt.Fprintf(file, "\n// GitHub Parameters\n")
-	fmt.Fprintf(file, "maxContributions = %d;\n", maxContributions)
+	fmt.Fprintf(out, "\n// GitHub Parameters\n")
+	fmt.Fprintf(out, "maxContributions = %d;\n", sl.MaxContributions)
 
-	fmt.Fprintln(file)
+	fmt.Fprintln(out)
 
-	fmt.Fprintf(file, "%v\n\n", baseModule)
-	fmt.Fprintf(file, "%v\n\n", buildingModule)
+	fmt.Fprintf(out, "%v\n\n", baseModule)
+	fmt.Fprintf(out, "%v\n\n", buildingModule)
 
-	fmt.Fprintf(file, "base();\n")
+	fmt.Fprintf(out, "union() {\n")
+	fmt.Fprintf(out, "  base();\n")
 
-	for _, col := range sl.Buildings {
-
-		// fmt.Fprintf(file, "// Column %d (%v)\n", col[0].Col, col[0].Date)
-
-		for _, b := range col {
-			if b == nil || b.Count == 0 {
-				continue
-			}
-
-			// fmt.Fprintf(file, "// %d contributions on %s\n", b.Count, b.Date)
-
-			fmt.Fprintf(file, "building(%f, %f, %d); // %v\n",
-				b.MinX, b.MinY, b.Count, b.Date)
+	for _, b := range sl.Buildings {
+		if b.Count == 0 {
+			continue
 		}
+
+		fmt.Fprintf(out, "  building(%f, %f, %d); // %v\n",
+			b.MinX, b.MinY, b.Count, b.Date)
 	}
 
-	return nil, nil
+	fmt.Fprintf(out, "}\n") // end union
+
+	return out.Bytes(), nil
 }
