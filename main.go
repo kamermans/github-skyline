@@ -28,6 +28,7 @@ var (
 	buildingWidth     float64
 	buildingLength    float64
 	interval          string
+	openscadPath      string
 
 	aspectRatioInts [2]int
 	outputFileType  string
@@ -49,6 +50,7 @@ func init() {
 	flag.Float64VarP(&buildingWidth, "building-width", "w", 2.0, "Building width (mm)")
 	flag.Float64VarP(&buildingLength, "building-length", "l", 2.0, "Building length (mm)")
 	flag.StringVarP(&interval, "interval", "i", "week", "Interval to use for contributions (day, week)")
+	flag.StringVarP(&openscadPath, "openscad", "O", "openscad", "Path to the OpenSCAD executable")
 	flag.Parse()
 
 	if contribsFile == "" && !saveContribs && (username == "" || token == "") {
@@ -141,7 +143,7 @@ func main() {
 			panic(err)
 		}
 
-		cmd := exec.Command("openscad", "-o", outputFile, tmpFile.Name())
+		cmd := exec.Command(openscadPath, "-o", outputFile, tmpFile.Name())
 		err = cmd.Run()
 		if err != nil {
 			panic(err)
