@@ -65,8 +65,8 @@ func init() {
 		panic(fmt.Errorf("invalid interval: %s; must be day or week", interval))
 	}
 
-	if outputFile == "" {
-		panic("output file is required")
+	if outputFile == "" && !saveContribs {
+		panic("output file is required unless you are using --save")
 	}
 
 	parts := strings.Split(path.Base(outputFile), ".")
