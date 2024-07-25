@@ -11,6 +11,10 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
+const (
+	version = "1.0.0"
+)
+
 var (
 	username          string
 	token             string
@@ -28,6 +32,8 @@ var (
 	buildingLength    float64
 	interval          string
 	openscadPath      string
+	showVersion       bool
+	showVersionRaw    bool
 
 	aspectRatioInts [2]int
 	outputFileType  skyline.OutputType
@@ -50,7 +56,19 @@ func init() {
 	flag.Float64VarP(&buildingLength, "building-length", "l", 2.0, "Building length (mm)")
 	flag.StringVarP(&interval, "interval", "i", "week", "Interval to use for contributions (day, week)")
 	flag.StringVarP(&openscadPath, "openscad", "O", "openscad", "Path to the OpenSCAD executable")
+	flag.BoolVarP(&showVersion, "version", "V", false, "Show version")
+	flag.BoolVar(&showVersionRaw, "version-raw", false, "Show version (raw)")
 	flag.Parse()
+
+	if showVersion {
+		fmt.Printf("github-skyline %s\n", version)
+		os.Exit(0)
+	}
+
+	if showVersionRaw {
+		fmt.Printf("%s\n", version)
+		os.Exit(0)
+	}
 
 	if contribsFile == "" && !saveContribs && (username == "" || token == "") {
 		flag.PrintDefaults()
