@@ -1,5 +1,7 @@
 # github-skyline
 
+![Skyline Example](skyline-example.png)
+
 This program generates GitHub Skyline CAD files in OpenSCAD and STL format.
 
 A GitHub Skyline is a 3D representation of a user's GitHub contributions,
@@ -71,9 +73,11 @@ maxBuildingHeight = 60.000000;
 buildingColor = "red";
 ```
 
+![OpenSCAD Screenshot](openscad.png)
+
 # Generating an STL file
 In order to generate an STL file, you msut have a recent version of [OpenSCAD](https://openscad.org/downloads.html)
-installed and accessible from your `PATH`.
+installed and accessible from your `PATH` (or you can specify the path with `--openscad /path/to/openscad`).
 
 ```
 $ github-skyline -f contributions.json -o skyline.stl
@@ -102,9 +106,10 @@ For an up-to-date list of options, use `github-skyline --help`:
   -e, --end int                     End year
   -i, --interval string             Interval to use for contributions (day, week) (default "week")
   -m, --max-building-height float   Max building height (mm) (default 20)
+  -O, --openscad string             Path to the OpenSCAD executable (default "openscad")
   -o, --output string               Output file (.scad and .stl are supported, but stl requires 'openscad') (default "skyline.scad")
   -s, --save                        Save contributions to a file
   -b, --start int                   Start year
   -t, --token string                GitHub token
   -u, --username string             GitHub username
-  ```
+```
