@@ -1,6 +1,6 @@
 # github-skyline
 
-![Skyline Example](skyline-example.png)
+![Skyline Example](images/skyline-example.png)
 
 This program generates GitHub Skyline CAD files in OpenSCAD and STL format.
 
@@ -73,7 +73,7 @@ maxBuildingHeight = 60.000000;
 buildingColor = "red";
 ```
 
-![OpenSCAD Screenshot](openscad.png)
+![OpenSCAD Screenshot](images/openscad.png)
 
 # Generating an STL file
 In order to generate an STL file, you msut have a recent version of [OpenSCAD](https://openscad.org/downloads.html)

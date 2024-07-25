@@ -1,6 +1,6 @@
-module github-skyline
+module github.com/kamermans/github-skyline
 
-go 1.22.2
+go 1.22.5
 
 require (
 	github.com/hasura/go-graphql-client v0.12.2

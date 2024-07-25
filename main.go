@@ -4,11 +4,10 @@ package main
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
-	"time"
 
+	"github.com/kamermans/github-skyline/pkg/skyline"
 	flag "github.com/spf13/pflag"
 )
 
@@ -31,7 +30,7 @@ var (
 	openscadPath      string
 
 	aspectRatioInts [2]int
-	outputFileType  string
+	outputFileType  skyline.OutputType
 )
 
 func init() {
@@ -76,8 +75,8 @@ func init() {
 		panic("output file must have an extension")
 	}
 
-	outputFileType = parts[len(parts)-1]
-	if outputFileType != "scad" && outputFileType != "stl" {
+	outputFileType = skyline.OutputType(parts[len(parts)-1])
+	if outputFileType != skyline.OutputTypeSCAD && outputFileType != skyline.OutputTypeSTL {
 		panic("output file must be .scad or .stl")
 	}
 }
@@ -85,15 +84,15 @@ func init() {
 func main() {
 
 	var err error
-	var contribs *Contributions
+	var contribs *skyline.Contributions
 
 	if contribsFile != "" && !saveContribs {
-		contribs, err = NewContributionsFromFile(contribsFile)
+		contribs, err = skyline.NewContributionsFromFile(contribsFile)
 		if err != nil {
 			panic(err)
 		}
 	} else {
-		fetcher := NewGitHubContributionsFetcher(username, token)
+		fetcher := skyline.NewGitHubContributionsFetcher(username, token)
 		contribs, err = fetcher.FetchContributions(startYear, endYear)
 		if err != nil {
 			panic(err)
@@ -110,46 +109,28 @@ func main() {
 	fmt.Printf("Total contributions: %d between %v and %v\n", contribs.TotalContributions, contribs.FirstDate, contribs.LastDate)
 
 	fmt.Printf("Generating OpenSCAD ...\n")
-	sg := NewSkylineGenerator(*contribs, aspectRatioInts, maxBuildingHeight, buildingWidth, buildingLength)
-	skyline := sg.Generate(interval)
-	skyline.BaseAngle = baseAngle
-	skyline.BaseHeight = baseHeight
-	skyline.BaseMargin = baseMargin
-	scad, err := skyline.ToOpenSCAD()
-	if err != nil {
-		panic(err)
-	}
+	sg := skyline.NewSkylineGenerator(*contribs, aspectRatioInts, maxBuildingHeight, buildingWidth, buildingLength)
+	sl := sg.Generate(interval)
+	sl.BaseAngle = baseAngle
+	sl.BaseHeight = baseHeight
+	sl.BaseMargin = baseMargin
 
-	if outputFileType == "scad" {
-		err = os.WriteFile(outputFile, scad, 0644)
+	if outputFileType == skyline.OutputTypeSCAD {
+		dur, err := sl.ToOpenSCAD(outputFile)
 		if err != nil {
 			panic(err)
 		}
 
-		fmt.Printf("OpenSCAD file written to %s\n", outputFile)
+		fmt.Printf("OpenSCAD file %s generated in %v\n", outputFile, dur)
 
-	} else if outputFileType == "stl" {
+	} else if outputFileType == skyline.OutputTypeSTL {
 		fmt.Printf("Generating STL ...\n")
-		start := time.Now()
 
-		tmpFile, err := os.CreateTemp("", "skyline*.scad")
+		dur, err := sl.ToSTL(outputFile, openscadPath)
 		if err != nil {
 			panic(err)
 		}
 
-		defer os.Remove(tmpFile.Name())
-		_, err = tmpFile.Write(scad)
-		if err != nil {
-			panic(err)
-		}
-
-		cmd := exec.Command(openscadPath, "-o", outputFile, tmpFile.Name())
-		err = cmd.Run()
-		if err != nil {
-			panic(err)
-		}
-
-		dur := time.Since(start)
 		fmt.Printf("STL file written to %s in %v\n", outputFile, dur)
 	}
 }

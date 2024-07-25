@@ -1,9 +1,12 @@
-package main
+package skyline
 
 import (
 	"bytes"
 	"fmt"
 	"math"
+	"os"
+	"os/exec"
+	"time"
 	// _ "github.com/go-gl/mathgl/mgl64"
 	// _ "github.com/ljanyst/ghostscad/primitive"
 	// osc "github.com/ljanyst/ghostscad/sys"
@@ -13,7 +16,12 @@ const (
 	defaultBaseMargin = 1.0
 	defaultBaseHeight = 5.0
 	defaultBaseAngle  = 22.5
+
+	OutputTypeSCAD = OutputType("scad")
+	OutputTypeSTL  = OutputType("stl")
 )
+
+type OutputType string
 
 type SkylineGenerator struct {
 	contributions  Contributions
@@ -217,7 +225,8 @@ var (
 }`
 )
 
-func (sl *Skyline) ToOpenSCAD() ([]byte, error) {
+func (sl *Skyline) ToOpenSCAD(filename string) (time.Duration, error) {
+	start := time.Now()
 	out := &bytes.Buffer{}
 
 	// Variables
@@ -262,5 +271,30 @@ func (sl *Skyline) ToOpenSCAD() ([]byte, error) {
 
 	fmt.Fprintf(out, "}\n") // end union
 
-	return out.Bytes(), nil
+	err := os.WriteFile(filename, out.Bytes(), 0644)
+	return time.Since(start), err
+}
+
+func (sl *Skyline) ToSTL(filename string, openscadPath string) (time.Duration, error) {
+	start := time.Now()
+
+	tmpFile, err := os.CreateTemp("", "skyline*.scad")
+	if err != nil {
+		return time.Since(start), err
+	}
+
+	defer os.Remove(tmpFile.Name())
+
+	_, err = sl.ToOpenSCAD(tmpFile.Name())
+	if err != nil {
+		return time.Since(start), err
+	}
+
+	cmd := exec.Command(openscadPath, "-o", filename, tmpFile.Name())
+	err = cmd.Run()
+	if err != nil {
+		return time.Since(start), err
+	}
+
+	return time.Since(start), nil
 }
