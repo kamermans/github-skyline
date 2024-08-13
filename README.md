@@ -1,8 +1,8 @@
-# github-skyline
+# GitHub Skyline Generator
 
 ![Skyline Example](images/skyline-example.png)
 
-This program generates GitHub Skyline CAD files in OpenSCAD and STL format.
+This program generates GitHub Skyline CAD files in OpenSCAD and STL format for 3D printing.
 
 A GitHub Skyline is a 3D representation of a user's GitHub contributions,
 where each building in the skyline represents one day or week of contributions.
