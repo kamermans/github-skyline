@@ -7,8 +7,8 @@ This program generates GitHub Skyline CAD files in OpenSCAD and STL format for 3
 A GitHub Skyline is a 3D representation of a user's GitHub contributions,
 where each building in the skyline represents one day or week of contributions.
 
-GitHub briefly had this feature in 2021, and I wanted an updated version of it
-so I wrote this code to allow people to create their own from their GitHub
+GitHub introduced this feature 2021 and removed it in 2024. I wanted an updated version of it
+so I wrote this to allow people to create their own from their GitHub
 account.
 
 # Installation
