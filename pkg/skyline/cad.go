@@ -109,7 +109,7 @@ func (sg *SkylineGenerator) Generate(interval string) *Skyline {
 			MaxX:   float64(len(matrix)) * sg.buildingWidth,
 			MaxY:   float64(len(matrix[0])) * sg.buildingLength,
 			Length: float64(len(matrix[0])) * sg.buildingLength,
-			Width:  float64(len(matrix)) * sg.buildingWidth,
+			Width:  float64(len(matrix)) * sg.buildingWidth, // TODO: reduce width
 			Height: sg.maxHeight,
 		},
 		BaseMargin: defaultBaseMargin,
@@ -141,6 +141,11 @@ func (sg *SkylineGenerator) computeMatrix(interval string) ([][]*Building, Stats
 
 	cols := int(math.Ceil(math.Sqrt(numBuildings * sg.aspectRatio)))
 	rows := int(math.Ceil(numBuildings / float64(cols)))
+
+	// Remove any unused columns
+	if cols*rows > int(numBuildings) {
+		cols = int(math.Ceil(numBuildings / float64(rows)))
+	}
 
 	fmt.Printf("Skyline details:\n")
 	fmt.Printf("  Buildings: %d (%v x %v matrix)\n", len(contribs), cols, rows)
