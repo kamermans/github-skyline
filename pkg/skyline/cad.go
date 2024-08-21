@@ -29,6 +29,7 @@ type SkylineGenerator struct {
 	maxHeight      float64
 	buildingWidth  float64
 	buildingLength float64
+	font           string
 }
 
 type Building struct {
@@ -60,6 +61,9 @@ type Skyline struct {
 	BaseMargin        float64
 	BaseHeight        float64
 	BaseAngle         float64
+	Font              string
+	TextLeft          string
+	TextRight         string
 }
 
 // NewSkylineGenerator creates a new SkylineGenerator
@@ -68,13 +72,14 @@ type Skyline struct {
 // maxHeight: the maximum height of the buildings in mm
 // buildingWidth: the width of the buildings in mm
 // buildingLength: the length of the buildings in mm
-func NewSkylineGenerator(Contributions Contributions, aspectRatio [2]int, maxHeight, buildingWidth, buildingLength float64) *SkylineGenerator {
+func NewSkylineGenerator(Contributions Contributions, aspectRatio [2]int, maxHeight, buildingWidth, buildingLength float64, font string) *SkylineGenerator {
 	sg := &SkylineGenerator{
 		contributions:  Contributions,
 		aspectRatio:    float64(aspectRatio[0]) / float64(aspectRatio[1]),
 		maxHeight:      maxHeight,
 		buildingWidth:  buildingWidth,
 		buildingLength: buildingLength,
+		font:           font,
 	}
 
 	return sg
@@ -110,6 +115,9 @@ func (sg *SkylineGenerator) Generate(interval string) *Skyline {
 		BaseMargin: defaultBaseMargin,
 		BaseHeight: defaultBaseHeight,
 		BaseAngle:  defaultBaseAngle,
+		Font:       sg.font,
+		TextLeft:   "@" + sg.contributions.Username,
+		TextRight:  sg.contributions.YearRangeText(),
 	}
 
 	return skyline
@@ -212,6 +220,24 @@ var (
 
     color(baseColor)
     polyhedron(points, faces);
+
+	if (textEnable) {
+		textOffset = baseOffset+baseMargin;
+		textSize = baseHeight-baseMargin;
+
+        rotate([90-baseAngle, 0 ,0])
+        translate([textOffset, 1, 0])
+        color("red")
+        linear_extrude(textHeight)
+        text(textLeft, size=textSize, halign="left", valign="baseline", font=textFont)
+        ;
+
+        rotate([90-baseAngle, 0 ,0])
+        translate([bottomWidth-textOffset, 1, 0])
+        color("red")
+        linear_extrude(textHeight)
+        text(textRight, size=textSize, halign="right", valign="baseline", font=textFont);
+    }
 }`
 
 	buildingModule = `module building(x, y, contributions) {
@@ -242,6 +268,14 @@ func (sl *Skyline) ToOpenSCAD(filename string) (time.Duration, error) {
 	fmt.Fprintf(out, "baseLength = %f + (2 * baseMargin);\n", sl.Bounds.Length)
 	fmt.Fprintf(out, "baseOffset = baseHeight * tan(baseAngle);\n")
 	fmt.Fprintf(out, `baseColor = "cyan";`+"\n")
+
+	fmt.Fprintf(out, "\n// Base Text\n")
+	fmt.Fprintf(out, "textEnable = true;\n")
+	fmt.Fprintf(out, "textFont = %q;\n", sl.Font)
+	fmt.Fprintf(out, "textLeft = %q;\n", sl.TextLeft)
+	fmt.Fprintf(out, "textRight = %q;\n", sl.TextRight)
+	fmt.Fprintf(out, `textColor = "red";`+"\n")
+	fmt.Fprintf(out, "textHeight = 0.4;\n")
 
 	fmt.Fprintf(out, "\n// Building Parameters\n")
 	fmt.Fprintf(out, "buildingWidth = %f;\n", sl.BuildingWidth)
