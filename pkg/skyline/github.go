@@ -35,10 +35,22 @@ func (sc StatsCollection) Max() int {
 }
 
 type Contributions struct {
+	Username           string         `json:"username"`
 	TotalContributions int            `json:"total_contributions"`
 	FirstDate          string         `json:"first_date"`
 	LastDate           string         `json:"last_date"`
 	ByDate             map[string]int `json:"by_date"`
+}
+
+func (c *Contributions) YearRangeText() string {
+	startYear := c.FirstDate[:4]
+	endYear := c.LastDate[:4]
+
+	if startYear == endYear {
+		return startYear
+	}
+
+	return fmt.Sprintf("%s-%s", startYear, endYear)
 }
 
 func (c *Contributions) PerDay() StatsCollection {
@@ -170,7 +182,8 @@ type DateTime struct{ time.Time }
 func (gcf *GitHubContributionsFetcher) FetchContributions(startYear, endYear int) (*Contributions, error) {
 
 	contrib := &Contributions{
-		ByDate: make(map[string]int),
+		Username: gcf.username,
+		ByDate:   make(map[string]int),
 	}
 
 	var firstDate time.Time
