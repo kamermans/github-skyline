@@ -245,12 +245,12 @@ var (
     }
 }`
 
-	buildingModule = `module building(x, y, contributions) {
+	buildingModule = `module building(row, col, contributions) {
     height = contributions / maxContributions * maxBuildingHeight;
     color(buildingColor)
         translate([
-            x+baseMargin+baseOffset,
-            y+baseMargin+baseOffset, baseHeight
+            (col * buildinwWidth)+baseMargin+baseOffset,
+            (row * buildingLength)+baseMargin+baseOffset, baseHeight
         ])
         cube([buildingWidth, buildingLength, height]);
 }`
@@ -298,14 +298,15 @@ func (sl *Skyline) ToOpenSCAD(filename string) (time.Duration, error) {
 
 	fmt.Fprintf(out, "union() {\n")
 	fmt.Fprintf(out, "  base();\n")
+	fmt.Fprintf(out, "  // building(row, col, contributions);\n")
 
 	for _, b := range sl.Buildings {
 		if b.Count == 0 {
 			continue
 		}
 
-		fmt.Fprintf(out, "  building(%f, %f, %d); // %v\n",
-			b.MinX, b.MinY, b.Count, b.Date)
+		fmt.Fprintf(out, "  building(%d, %d, %d); // %v\n",
+			b.Row, b.Col, b.Count, b.Date)
 	}
 
 	fmt.Fprintf(out, "}\n") // end union
