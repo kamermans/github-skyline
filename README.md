@@ -85,7 +85,7 @@ buildingColor = "red";
 ![OpenSCAD Screenshot](images/openscad.png)
 
 # Generating an STL file
-In order to generate an STL file, you msut have a recent version of [OpenSCAD](https://openscad.org/downloads.html)
+In order to generate an STL file, you must have a recent version of [OpenSCAD](https://openscad.org/downloads.html)
 installed and accessible from your `PATH` (or you can specify the path with `--openscad /path/to/openscad`).
 
 ```
