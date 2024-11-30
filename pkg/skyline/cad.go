@@ -249,7 +249,7 @@ var (
     height = contributions / maxContributions * maxBuildingHeight;
     color(buildingColor)
         translate([
-            (col * buildinwWidth)+baseMargin+baseOffset,
+            (col * buildingWidth)+baseMargin+baseOffset,
             (row * buildingLength)+baseMargin+baseOffset, baseHeight
         ])
         cube([buildingWidth, buildingLength, height]);
