@@ -20,6 +20,7 @@ var (
 	token             string
 	saveContribs      bool
 	contribsFile      string
+	trimContribs      bool
 	outputFile        string
 	startYear         int
 	endYear           int
@@ -45,6 +46,7 @@ func init() {
 	flag.StringVarP(&token, "token", "t", os.Getenv("GITHUB_TOKEN"), "GitHub token")
 	flag.BoolVarP(&saveContribs, "save", "s", false, "Save contributions to a file")
 	flag.StringVarP(&contribsFile, "contributions", "f", "contributions.json", "File to save/load contributions")
+	flag.BoolVarP(&trimContribs, "trim", "T", true, "Trim years from the start that contain no contributions")
 	flag.StringVarP(&outputFile, "output", "o", "skyline.scad", "Output file (.scad and .stl are supported, but stl requires 'openscad')")
 	flag.IntVarP(&startYear, "start", "b", 0, "Start year")
 	flag.IntVarP(&endYear, "end", "e", 0, "End year")
@@ -123,6 +125,12 @@ func main() {
 			if err != nil {
 				panic(err)
 			}
+		}
+	}
+
+	if trimContribs {
+		if contribs.TrimStartYear() {
+			fmt.Printf("Trimmed start year to %v\n", contribs.FirstDate[:4])
 		}
 	}
 

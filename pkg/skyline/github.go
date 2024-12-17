@@ -42,6 +42,51 @@ type Contributions struct {
 	ByDate             map[string]int `json:"by_date"`
 }
 
+// TrimStartYear trims the contributions to the first year with at least one contribution
+func (c *Contributions) TrimStartYear() bool {
+	firstContributionYear := 0
+	for date, numContribs := range c.ByDate {
+
+		if numContribs == 0 {
+			continue
+		}
+
+		year, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			panic(err)
+		}
+
+		if firstContributionYear == 0 || year.Year() < firstContributionYear {
+			firstContributionYear = year.Year()
+		}
+	}
+
+	fmt.Printf("First contribution year: %d\n", firstContributionYear)
+
+	if firstContributionYear == 0 {
+		return false
+	}
+
+	for date := range c.ByDate {
+		year, err := time.Parse("2006-01-02", date)
+		if err != nil {
+			panic(err)
+		}
+
+		if year.Year() < firstContributionYear {
+			delete(c.ByDate, date)
+		}
+	}
+
+	firstDate := fmt.Sprintf("%d-01-01", firstContributionYear)
+	if firstDate != c.FirstDate {
+		c.FirstDate = firstDate
+		return true
+	}
+
+	return false
+}
+
 func (c *Contributions) YearRangeText() string {
 	startYear := c.FirstDate[:4]
 	endYear := c.LastDate[:4]
