@@ -228,7 +228,7 @@ var (
 
 	if (textEnable) {
 		textOffset = baseOffset+baseMargin;
-		textSize = baseHeight-baseMargin;
+		textSize = baseHeight-baseMargin-1;
 
         rotate([90-baseAngle, 0 ,0])
         translate([textOffset, 1, 0])
